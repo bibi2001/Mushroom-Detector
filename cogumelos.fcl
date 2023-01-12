@@ -1,0 +1,104 @@
+// Block definition (there may be more than one block per file)
+FUNCTION_BLOCK angleAction
+
+// Define input variables
+VAR_INPUT
+    distanceRIGHT : REAL; //distancia ao robot
+    distanceLEFT : REAL;
+    distanceCENTER :REAL;
+    
+    classification : REAL; //classificação do cogumelo
+	
+END_VAR
+
+// Define output variable
+VAR_OUTPUT
+    angle : REAL; //angulo das rodas
+    action : REAL; //ação a ser realizada
+END_VAR
+
+// Fuzzify input variable 'distance'
+FUZZIFY distanceRIGHT
+	TERM verynear := (0,1) (1,1) (1,0);
+    TERM near := (0, 1) (4, 0); 
+    TERM medium := (0, 0) (5, 1) (10,0);
+    TERM far := (6, 0) (10, 1);
+END_FUZZIFY
+
+FUZZIFY distanceLEFT
+	TERM verynear := (0,1) (1,1) (1,0);
+    TERM near := (0, 1) (4, 0); 
+    TERM medium := (0, 0) (5, 1) (10,0);
+    TERM far := (6, 0) (10, 1);
+END_FUZZIFY
+
+FUZZIFY distanceCENTER
+	TERM near := (0, 1) (4, 0); 
+    TERM medium := (0, 0) (5, 1) (10,0);
+    TERM far := (6, 0) (10, 1);
+END_FUZZIFY
+    
+// Fuzzify input variable 'classification'
+FUZZIFY classification
+    TERM poisonous := 0 ;
+    TERM edible := 1;
+    TERM none := 2;
+END_FUZZIFY
+
+// Defzzzify output variable 'angle'
+DEFUZZIFY angle
+    TERM strongleft := (-45,1) (0,0);
+    TERM left := (-45,0) (-22.5,1) (0,0);
+    TERM center := (-22.5,0) (0,1) (22.5,0);
+   	TERM right := (0,0) (22.5,1) (45,0);
+   	TERM strongright := (0,0) (45,1);
+   	
+    // Use 'Center Of Gravity' defuzzification method
+    METHOD : COG;
+    // Default value is 0 (if no rule activates defuzzifier)
+    DEFAULT := 0;
+END_DEFUZZIFY
+
+// Defzzzify output variable 'action'
+DEFUZZIFY action
+	TERM destroy := 0;
+    TERM pickup := 1;
+    TERM no_action := 2;
+    // Use 'Center Of Gravity' defuzzification method
+    METHOD : COGS;
+    // Default value is 1 (if no rule activates defuzzifier)
+    DEFAULT := 2;
+END_DEFUZZIFY
+
+RULEBLOCK No2
+    AND : MIN;
+    ACT : MIN;
+    ACCU : MAX;
+
+   	RULE 1 : IF classification IS edible AND 
+   	(distanceRIGHT IS near OR distanceCENTER IS near OR distanceLEFT IS near) 
+                THEN action IS pickup; 
+    RULE 2 : IF classification IS poisonous AND 
+    (distanceRIGHT IS near OR distanceCENTER IS near OR distanceLEFT IS near) 
+    			THEN action is destroy;
+    			
+END_RULEBLOCK  
+
+RULEBLOCK No1
+    AND : MIN;
+    ACT : MIN;
+    ACCU : MAX;
+      
+ 	RULE 1 : IF distanceRIGHT IS near
+    			THEN angle is strongright;
+ 	RULE 2 : IF distanceLEFT IS near 
+ 				THEN angle is strongleft;  
+                 
+    RULE 3 : IF distanceLEFT IS medium
+                THEN angle is left;      
+    RULE 4 : IF distanceRIGHT IS medium 
+                THEN angle is right; 
+                
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK
